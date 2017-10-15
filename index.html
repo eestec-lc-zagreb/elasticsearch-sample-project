@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Elasticsearch + Angular Example</title>
+  <link rel="stylesheet" type="text/css" href="node_modules/bootstrap/dist/css/bootstrap.css">
+</head>
+<!-- boot angular with the ExampleApp module -->
+<body ng-app="ExampleApp">
+  <!-- attach the ExampleController to our main content -->
+  <div ng-controller="ExampleController" class="container">
+    <h1>Angular + Elasticsearch</h1>
+
+    <!-- if there is an error, display its message -->
+    <div ng-if="error" class="alert alert-danger" role="alert">{{error.message}}</div>
+
+    <!-- if clusterState is available, display it as formatted json -->
+    <div ng-if="searchResultsJson" class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title">Cluster State</h3>
+      </div>
+      <div class="panel-body">
+        <pre>{{searchResultsJson | json}}</pre>
+      </div>
+      <div class="container" id="pollTable" align="center">
+	      <input type="text" id="myInput" onkeyup="searching()" placeholder="Search for names..">
+      </div>
+      <br>
+    </div>
+  </div>
+
+  <!-- include npm modules in proper order -->
+  <script src="node_modules/angular/angular.min.js"></script>
+  <script src="node_modules/elasticsearch-browser/elasticsearch.angular.min.js"></script>
+
+  <!-- app code starts is here -->
+  <script>
+    // App module
+    //
+    // The app module will contain all of the components the app needs (directives,
+    // controllers, services, etc.). Since it will be using the components within
+    // the elasticsearch module, define it a dependency.
+var glob;
+    var ExampleApp = angular.module('ExampleApp', ['elasticsearch']);
+
+    // Service
+    //
+    // esFactory() creates a configured client instance. Turn that instance
+    // into a service so that it can be required by other parts of the application
+    ExampleApp.service('client', function (esFactory) {
+      return esFactory({
+        host: 'localhost:9200',
+        apiVersion: '2.3',
+        log: 'trace'
+      });
+    });
+
+    // Controller
+    //
+    // It requires the "client" service, and fetches information about the server,
+    // it adds either an error or info about the server to $scope.
+    //
+    // It also requires the esFactory to that it can check for a specific type of
+    // error which might come back from the client
+    /*ExampleApp.controller('ExampleController', function ($scope, client, esFactory) {
+
+      client.cluster.state({
+        metric: [
+          'cluster_name',
+          'nodes',
+          'master_node',
+          'version'
+	]
+      })
+      .then(function (resp) {
+        $scope.clusterState = resp;
+console.log(resp); 
+        $scope.error = null;
+      })
+      .catch(function (err) {
+        $scope.clusterState = null;
+        $scope.error = err;
+
+        // if the err is a NoConnections error, then the client was not able to
+        // connect to elasticsearch. In that case, create a more detailed error
+        // message
+        if (err instanceof esFactory.errors.NoConnections) {
+          $scope.error = new Error('Unable to connect to elasticsearch. ' +
+            'Make sure that it is running and listening at http://localhost:9200');
+        }
+      });
+
+    });*/
+var container = document.getElementById("pollTable");
+
+/*var txt = document.createElement("input");
+//txt.value = "search";
+txt.setAttribute("type", "search");
+txt.setAttribute("id", "searchString");*/
+/*container.appendChild(txt);
+var buttonS = document.createElement("input");
+buttonS.value = "Submit";
+buttonS.type = "button";
+buttonS.onclick = function(){ searching();};
+container.appendChild(buttonS);*/
+
+
+
+/*function searching() { 
+	var searchVar = document.getElementById('searchString').value;
+	searchVar = searchVar + '*';	
+	var allTitles = [];
+	txt.value = htmllist;
+
+ }*/
+ 
+ function searching() {
+    // Declare variables
+    var input, filter, ul, li, a, i;
+    input = document.getElementById('myInput');
+    filter = input.value.toUpperCase();
+    //ul = document.getElementById("myUL");
+    //li = ul.getElementsByTagName('li');
+   ul = document.getElementById("pollTable"); 
+	li = document.getElementsByClassName('searchR');
+
+    // Loop through all list items, and hide those who don't match the search query
+    for (i = 0; i < li.length; i++) {
+        a = li[i];//.getElementsByTagName("a")[0];
+        if (a.value.toUpperCase().indexOf(filter) > -1) {
+            li[i].style.display = "";
+        } else {
+            li[i].style.display = "none";
+        }
+    }
+}
+ 
+
+ExampleApp.controller('ExampleController', function ($scope, client, esFactory) {
+var searchVar = 'last_name:'+'Do'+'*';
+var allLastName = [];
+client.search({
+  index: 'users',
+  type: 'user',
+  scroll: '30s',
+  //q: searchVar
+  q: searchVar//'last_name:Do*'
+/*body: {
+    query: {
+      match: {
+        last_name: 'Do'
+      }
+    }
+  }*/
+}).then(function (resp) {
+   var hits = resp.hits.hits;
+   console.log(resp);
+   glob = resp;
+   var htmllist;
+   $scope.searchResultsJson = resp;
+	container.appendChild(document.createElement("br"));
+   //dynamicly create textbox  
+	for (var i=0;i<resp.hits.total;i++) {
+	     var row = document.createElement("row");
+	     var ans = document.createElement("input");
+	     ans.setAttribute("class", "searchR");
+	     ans.value = resp.hits.hits[i]._source.last_name;
+		  ans.disabled = "true";
+	     row.appendChild(ans);                                              
+     	  container.appendChild(row);
+   	  container.appendChild(document.createElement("br"));
+	}
+	htmllist = '<ul id="myUL">';
+   resp.hits.hits.forEach(function (hit) {
+   allLastName.push(hit._source.last_name);
+   htmllist+='<li><a href="#">'+hit._source.first_name+' '+hit._source.last_name+'</a></li>';
+   })
+   htmllist+='</ul>';
+   var wrapper= document.createElement('div');
+   wrapper.innerHTML = htmllist;
+//   container.appendChild(wrapper);
+   
+   });
+   
+}, function (err) {
+    console.trace(err.message);
+	});
+</script>
+</body>
+</html>
